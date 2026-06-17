@@ -1,0 +1,11 @@
+{
+  "buildCommand": "pnpm --filter frontend run build",
+  "outputDirectory": "frontend/dist",
+  "installCommand": "pnpm install",
+  "framework": null,
+  "rewrites": [
+    { "source": "/api/results/captcha", "destination": "/api/captcha" },
+    { "source": "/api/results/check", "destination": "/api/check" },
+    { "source": "/api/:path*", "destination": "/api/index" }
+  ]
+}

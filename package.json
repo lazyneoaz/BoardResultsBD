@@ -1,0 +1,14 @@
+{
+  "name": "bd-education-results",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm dev:api & pnpm dev:frontend",
+    "dev:frontend": "pnpm --filter frontend run dev",
+    "dev:api": "pnpm --filter api run dev",
+    "build": "pnpm --filter frontend run build"
+  },
+  "devDependencies": {
+    "typescript": "~5.9.3"
+  }
+}

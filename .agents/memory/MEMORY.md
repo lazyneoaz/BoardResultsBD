@@ -1,0 +1,1 @@
+- [Vercel deployment config](vercel-deployment.md) — frontend (@vercel/static-build) + Express API (@vercel/node) in one vercel.json
