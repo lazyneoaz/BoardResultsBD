@@ -2,11 +2,13 @@ import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Printer, Download, Loader2, GraduationCap } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Result() {
   const [, setLocation] = useLocation();
   const [isDownloading, setIsDownloading] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
 
   const resultHtml =
     typeof window !== "undefined" ? sessionStorage.getItem("bd_result_html") : null;
@@ -29,30 +31,46 @@ export default function Result() {
       const canvas = await html2canvas(contentRef.current, {
         scale: 2,
         useCORS: true,
+        allowTaint: true,
         backgroundColor: "#ffffff",
         logging: false,
+        removeContainer: true,
+        onclone: (_doc: Document, el: HTMLElement) => {
+          el.style.borderRadius = "0";
+          el.style.boxShadow = "none";
+        },
       });
 
-      const imgData = canvas.toDataURL("image/png");
-      const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-      const pageW = pdf.internal.pageSize.getWidth();
-      const pageH = pdf.internal.pageSize.getHeight();
-      const imgH = (canvas.height * pageW) / canvas.width;
+      const A4_W = 210; // mm
+      const A4_H = 297; // mm
+      const imgW = A4_W;
+      const imgH = (canvas.height * imgW) / canvas.width;
 
-      // If content is taller than one page, split across pages
-      let yOffset = 0;
-      let remainingH = imgH;
-      while (remainingH > 0) {
-        if (yOffset > 0) pdf.addPage();
-        pdf.addImage(imgData, "PNG", 0, -yOffset, pageW, imgH);
-        yOffset += pageH;
-        remainingH -= pageH;
+      const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+      const imgData = canvas.toDataURL("image/jpeg", 0.92);
+
+      // Place image across pages: shift image upward by pageHeight on each new page
+      let heightLeft = imgH;
+      let pageTop = 0;
+
+      pdf.addImage(imgData, "JPEG", 0, 0, imgW, imgH);
+      heightLeft -= A4_H;
+
+      while (heightLeft > 0) {
+        pageTop -= A4_H;
+        pdf.addPage();
+        pdf.addImage(imgData, "JPEG", 0, pageTop, imgW, imgH);
+        heightLeft -= A4_H;
       }
 
       pdf.save("bd-exam-result.pdf");
-    } catch {
-      // Fallback to print if PDF generation fails
-      window.print();
+    } catch (err) {
+      console.error("PDF generation failed:", err);
+      toast({
+        title: "PDF download failed",
+        description: "Use the Print button and choose 'Save as PDF' instead.",
+        variant: "destructive",
+      });
     } finally {
       setIsDownloading(false);
     }
@@ -90,7 +108,9 @@ export default function Result() {
               ) : (
                 <Download className="w-3.5 h-3.5" />
               )}
-              <span className="hidden sm:inline">{isDownloading ? "Generating…" : "Download PDF"}</span>
+              <span className="hidden sm:inline">
+                {isDownloading ? "Generating…" : "Download PDF"}
+              </span>
               <span className="sm:hidden text-xs">PDF</span>
             </Button>
 
@@ -123,18 +143,19 @@ export default function Result() {
 
       {/* Main content */}
       <main className="flex-1 max-w-2xl w-full mx-auto px-4 py-6 pb-12">
-        {/* PDF-captured area */}
         <div
           ref={contentRef}
           className="bg-white rounded-xl border border-border/60 shadow-md overflow-hidden print:shadow-none print:border-none print:rounded-none"
         >
-          {/* Official-style document header */}
+          {/* Document header — captured in PDF */}
           <div className="bg-primary px-6 py-5 flex items-center gap-4 print:py-4">
             <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center shrink-0">
               <GraduationCap className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h2 className="text-white font-bold text-base leading-tight">Bangladesh Education Board</h2>
+              <h2 className="text-white font-bold text-base leading-tight">
+                Bangladesh Education Board
+              </h2>
               <p className="text-white/75 text-xs mt-0.5">Official Examination Result</p>
             </div>
           </div>
